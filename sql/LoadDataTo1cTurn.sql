@@ -21,18 +21,17 @@ begin
  select @InventoryID=2 -- ИД документа инвентаризации           
  select @TurnOwnID=3  -- ИД документа на внутреннее перемещение           
         
-/* тары сказали не будет!           
+-- Тара           
  select TMCID             
  into #Tara            
  from StandartAdj,WHNomenclature (index WH_NomenclGr_idx)            
  where StandartAdj.ID=1 and            
        WHNomenclature.WHNomenclatureGroupID=StandartAdj.ContainerID            
  group by TMCID            
-*/        
+        
        
            
 /* Приходные документы*/           
-       
 set forceplan on       
            
  select convert(numeric(1),1) as TypeTurn,           
@@ -64,7 +63,9 @@ set forceplan on
         Round(W.CreditQuantity * (WHCard.PriceN-WHDCExt.GlassPrice) *0.01*(case when WHDCExt.SenderTax=20 then WHDCExt.SenderTax else 0 end) ,2)  as NDSIn_18,              
         W.CreditQuantity as QuantityFact,           
         convert(integer,0) as FixedPrice,        
-        convert(integer,0) as IsTara,        
+        case when not exists(select 1 from #Tara where #Tara.TMCID=WHCard.NomenclID) 
+             then convert(integer,0) 
+             else convert(integer,1) as IsTara,        
         Round(W.CreditQuantity*(WHCard.PriceN-WHDCExt.GlassPrice)*WHDCExt.SenderTax*0.01,2) NDSIn, --НДС в отпускной цене            
         --Возьмем НДС обратным счетом как в реестре 4!! знака после запятой!         
         -- W.CreditQuantity*Round((WHCard.PriceP-WHDCExt.GlassPrice)*WHCard.NDSPersent*0.01,2)  NDSOut, --НДС в розничной цене         
@@ -147,7 +148,9 @@ insert into #T1
         Round(W.CreditQuantity * (WHCard.PriceN-WHDCExt.GlassPrice) *0.01*(case when WHDCExt.SenderTax=20 then WHDCExt.SenderTax else 0 end) ,2)  as NDSIn_18,              
         W.CreditQuantity as QuantityFact,           
         convert(integer,0) as FixedPrice,        
-        convert(integer,0) as IsTara,        
+        case when not exists(select 1 from #Tara where #Tara.TMCID=WHCard.NomenclID) 
+             then convert(integer,0) 
+             else convert(integer,1) as IsTara,    
         Round(W.CreditQuantity*(WHCard.PriceN-WHDCExt.GlassPrice)*WHDCExt.SenderTax*0.01,2) NDSIn, --НДС в отпускной цене            
         --Возьмем НДС обратным счетом как в реестре 4!! знака после запятой!         
         -- W.CreditQuantity*Round((WHCard.PriceP-WHDCExt.GlassPrice)*WHCard.NDSPersent*0.01,2)  NDSOut, --НДС в розничной цене         
@@ -232,24 +235,18 @@ insert into #T1
         --case when WHCard.PriceF>WHCard.PriceN then 1 else 0 end as FixedPrice,           
         --case when exists(select 1 from #Tara where #Tara.TMCID=WHCard.NomenclID) then 1 else 0 end as IsTara,           
         convert(integer,0) as FixedPrice,        
-        convert(integer,0) as IsTara,        
-           
+        case when not exists(select 1 from #Tara where #Tara.TMCID=WHCard.NomenclID) 
+             then convert(integer,0) 
+             else convert(integer,1) as IsTara,               
         Round(W.DebetQuantity*(WHCard.PriceN-WHDCExt.GlassPrice)*WHDCExt.SenderTax*0.01,2) NDSIn, --НДС в отпускной цене              
-              
         W.DebetQuantity*Round((WHCard.PriceP-WHDCExt.GlassPrice)*WHCard.NDSPersent*0.01,2) NDSOut, --НДС в розничной цене              
-                          
         W.DebetQuantity*(case when WHCard.NDSPersent=10 then Round((WHCard.PriceP-WHDCExt.GlassPrice)*0.1,2) else 0 end) NDSOut_10, --НДС в розничной цене         
-         
         W.DebetQuantity*(case when WHCard.NDSPersent=20 then Round((WHCard.PriceP-WHDCExt.GlassPrice)*0.20,2) else 0 end) NDSOut_18,  --НДС в розничной цене         
-         
         W.DebetQuantity*(WHCard.PricePAll-Round((WHCard.PriceP-WHDCExt.GlassPrice)*(1+WHCard.NDSPersent*0.01)*WHCard.SalesTax*0.01,2)-           
-                          Round((WHCard.PriceP-WHDCExt.GlassPrice)*WHCard.NDSPersent*0.01,2)-(WHCard.PriceN-WHDCExt.GlassPrice)) SumTradeRaise,            
-             
+                         Round((WHCard.PriceP-WHDCExt.GlassPrice)*WHCard.NDSPersent*0.01,2)-(WHCard.PriceN-WHDCExt.GlassPrice)) SumTradeRaise,            
         W.DebetQuantity*Round((WHCard.PriceP-WHDCExt.GlassPrice)*(1+WHCard.NDSPersent*0.01)*WHCard.SalesTax*0.01,2) SumSalesTax,            
-                     
         W.DebetQuantity*WHDCExt.GlassPrice GlassPrice,           
         W.DebetQuantity*WHDCExt.GlassPrice*WHDCExt.GlassNDS*0.01 GlassNDS,             
-            
         --W.DebetQuantity*(WHCard.PricePAll-(WHCard.PriceP-WHDCExt.GlassPrice)*(1+WHCard.NDSPersent*0.01)*(1+WHCard.SalesTax*0.01)) SumRestOfRound           
         convert(money,0) SumRestOfRound           
  from WHTurn W (index WHTurn3_idx),                             
@@ -312,25 +309,18 @@ insert into #T1
         --case when WHCard.PriceF>WHCard.PriceN then 1 else 0 end as FixedPrice,           
         --case when exists(select 1 from #Tara where #Tara.TMCID=WHCard.NomenclID) then 1 else 0 end as IsTara,           
         convert(integer,0) as FixedPrice,        
-        convert(integer,0) as IsTara,        
-           
+        case when not exists(select 1 from #Tara where #Tara.TMCID=WHCard.NomenclID) 
+             then convert(integer,0) 
+             else convert(integer,1) as IsTara,           
         Round(W.DebetQuantity*(WHCard.PriceN-WHDCExt.GlassPrice)*WHDCExt.SenderTax*0.01,2) NDSIn, --НДС в отпускной цене              
-              
         W.DebetQuantity*Round((WHCard.PriceP-WHDCExt.GlassPrice)*WHCard.NDSPersent*0.01,2) NDSOut, --НДС в розничной цене              
-                          
         W.DebetQuantity*(case when WHCard.NDSPersent=10 then Round((WHCard.PriceP-WHDCExt.GlassPrice)*0.1,2) else 0 end) NDSOut_10, --НДС в розничной цене         
-         
         W.DebetQuantity*(case when WHCard.NDSPersent=20 then Round((WHCard.PriceP-WHDCExt.GlassPrice)*0.20,2) else 0 end) NDSOut_18,  --НДС в розничной цене         
-         
         W.DebetQuantity*(WHCard.PricePAll-Round((WHCard.PriceP-WHDCExt.GlassPrice)*(1+WHCard.NDSPersent*0.01)*WHCard.SalesTax*0.01,2)-           
-                          Round((WHCard.PriceP-WHDCExt.GlassPrice)*WHCard.NDSPersent*0.01,2)-(WHCard.PriceN-WHDCExt.GlassPrice)) SumTradeRaise,            
-             
-  
+                         Round((WHCard.PriceP-WHDCExt.GlassPrice)*WHCard.NDSPersent*0.01,2)-(WHCard.PriceN-WHDCExt.GlassPrice)) SumTradeRaise,            
         W.DebetQuantity*Round((WHCard.PriceP-WHDCExt.GlassPrice)*(1+WHCard.NDSPersent*0.01)*WHCard.SalesTax*0.01,2) SumSalesTax,            
-                     
         W.DebetQuantity*WHDCExt.GlassPrice GlassPrice,           
         W.DebetQuantity*WHDCExt.GlassPrice*WHDCExt.GlassNDS*0.01 GlassNDS,             
-            
         --W.DebetQuantity*(WHCard.PricePAll-(WHCard.PriceP-WHDCExt.GlassPrice)*(1+WHCard.NDSPersent*0.01)*(1+WHCard.SalesTax*0.01)) SumRestOfRound           
         convert(money,0) SumRestOfRound           
  from WHTurn W (index WHTurn3_idx),                             
@@ -424,7 +414,9 @@ insert into #T1
         convert(money,0) as NDSIn_18,            
         W.QuantityFact,                       
         convert(integer,0) as FixedPrice,        
-        convert(integer,0) as IsTara,        
+        case when not exists(select 1 from #Tara where #Tara.TMCID=WHCard.NomenclID) 
+             then convert(integer,0) 
+             else convert(integer,1) as IsTara,    
         Round(W.QuantityFact*((W.PriceN-WHDCExt.GlassPrice)*WHDCExt.SenderTax*0.01-(OLD.PriceN-OLDExt.GlassPrice)*OLDExt.SenderTax*0.01),2) NDSIn, --НДС в отпускной цене              
         --Возьмем обратным счетом    
         --W.QuantityFact*(Round((W.PriceP-WHDCExt.GlassPrice)*W.NDSPersent*0.01,2)-Round((OLD.PriceP-OLDExt.GlassPrice)*OLD.NDSPersent*0.01,2)) NDSOut, --НДС в розничной цене     
@@ -486,7 +478,7 @@ insert into #T1
  select WHDocumentID,TypeTurn,Kind,Date,Number,WareHouseID,DivisionID,     
         convert(varchar(10),Date_Reestr,104)as Date_Reestr,UNN,--FixedPrice,IsTara,  --WareHouseFromID,WareHouseToID,           
         convert(integer,0) as FixedPrice,        
-        convert(integer,0) as IsTara,        
+        IsTara,        
         sum(SumPriceF) sumPriceF,           
         sum(SumPriceN) sumPriceN,           
         sum(SumPricePAll) sumPricePALL,        
@@ -545,8 +537,8 @@ insert into #T1
         end as SumNotCach        
          
  from #T1              
- group by WHDocumentID,TypeTurn,Kind,Date,Number,WareHouseID,DivisionID,convert(varchar(10),Date_Reestr,104),UNN        
-          --FixedPrice,IsTara             
+ group by WHDocumentID,TypeTurn,Kind,Date,Number,WareHouseID,DivisionID,convert(varchar(10),Date_Reestr,104),UNN--FixedPrice
+          ,IsTara             
           --WareHouseFromID,WareHouseToID,           
  order by TypeTurn,Kind,Date,Number,UNN           
              
