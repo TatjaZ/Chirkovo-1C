@@ -1,4 +1,5 @@
-drop procedure LoadDataTo1cTurn            
+
+drop procedure LoadDataTo1cTurn            
 go
 create procedure LoadDataTo1cTurn            
 (@DateFrom datetime,      
